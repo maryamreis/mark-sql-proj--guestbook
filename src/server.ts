@@ -25,14 +25,24 @@ app.use(cors());
 app.use(express.json());
 
 //When this route is called, return the most recent 100 signatures in the db
+//FIXME-TASK: get signatures from db!
 app.get("/signatures", async (req, res) => {
-  const signatures = null; //FIXME-TASK: get signatures from db!
-  res.status(200).json({
+  try {
+    const signatures = await client.query("SELECT signature FROM signatures ORDER BY id desc LIMIT 100 "); 
+    res.status(200).json({
     status: "success",
     data: {
       signatures
     },
   });
+    
+  } catch (error) {
+    console.error(error.message)
+    
+  }
+
+  
+  
 });
 
 app.get("/signatures/:id", async (req, res) => {
