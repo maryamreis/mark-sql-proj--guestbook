@@ -28,66 +28,80 @@ app.use(express.json());
 //FIXME-TASK: get signatures from db!
 app.get("/signatures", async (req, res) => {
   try {
-    const signatures = await client.query("SELECT signature FROM signatures ORDER BY id desc LIMIT 100 "); 
+    const response = await client.query("SELECT signature, id, message, time FROM signatures ORDER BY id desc LIMIT 100 "); 
     res.status(200).json({
     status: "success",
     data: {
-      signatures
+      response: response.rows
     },
   });
-    
   } catch (error) {
     console.error(error.message)
-    
+    res.status(400).json({
+      status: "bad request",
+      data: {
+        response: error.message
+      },
+    })
   }
-
-  
-  
 });
+
+
+// Does it need to display an error message if there is no id that matches it?
 
 app.get("/signatures/:id", async (req, res) => {
   // :id indicates a "route parameter", available as req.params.id
   //  see documentation: https://expressjs.com/en/guide/routing.html
   const id = parseInt(req.params.id); // params are always string type
-
-  const signature = null;   //FIXME-TASK get the signature row from the db (match on id)
-
-  if (signature) {
+  
+  try {
+    //FIXME-TASK get the signature row from the db (match on id)
+    const signature = await client.query('SELECT signature FROM signatures WHERE id = $1', [id]);  
     res.status(200).json({
       status: "success",
       data: {
-        signature,
+        signature: signature.rows,
       },
     });
-  } else {
+
+  } catch (error) {
+    console.error(error.message)
     res.status(404).json({
       status: "fail",
       data: {
         id: "Could not find a signature with that id identifier",
+        error: error.message
       },
     });
   }
+  
 });
 
 app.post("/signatures", async (req, res) => {
   const { name, message } = req.body;
-  if (typeof name === "string") {
-    const createdSignature = null; //FIXME-TASK: insert the supplied signature object into the DB
-
-    res.status(201).json({
-      status: "success",
-      data: {
-        signature: createdSignature, //return the relevant data (including its db-generated id)
-      },
-    });
-  } else {
+  try {
+    if (typeof name === "string") {
+      //FIXME-TASK: insert the supplied signature object into the DB
+      await client.query('INSERT INTO signatures (signature) VALUES ($1)', [name])
+      // INSERT INTO signatures (signature) VALUES ('Indiana Jones')
+      //const createdSignature = await client.query(`SELECT signature FROM signatures WHERE signature = '${name}'`); 
+  
+      res.status(201).json({
+        status: "success",
+        // data: {
+        //   signature: createdSignature, //return the relevant data (including its db-generated id)
+        // },
+      });
+  } 
+} catch (error) {
+  console.log(error.message)
     res.status(400).json({
       status: "fail",
       data: {
-        name: "A string value for name is required in your JSON body",
+        error: error.message,
       },
     });
-  }
+  } 
 });
 
 //update a signature.
@@ -97,7 +111,8 @@ app.put("/signatures/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (typeof name === "string") {
 
-    const result: any = null; //FIXME-TASK: update the signature with given id in the DB.
+    //FIXME-TASK: update the signature with given id in the DB.
+    const result = await client.query('UPDATE signatures SET signature = $1 WHERE id = $2', [name, id]); 
 
     if (result.rowCount === 1) {
       const updatedSignature = result.rows[0];
@@ -129,7 +144,8 @@ app.put("/signatures/:id", async (req, res) => {
 app.delete("/signatures/:id", async (req, res) => {
   const id = parseInt(req.params.id); // params are string type
 
-  const queryResult: any = null; ////FIXME-TASK: delete the row with given id from the db  
+  ////FIXME-TASK: delete the row with given id from the db 
+  const queryResult: any = await client.query('DELETE FROM signatures WHERE id = $1', [id]);  
   const didRemove = queryResult.rowCount === 1;
 
   if (didRemove) {
@@ -144,7 +160,7 @@ app.delete("/signatures/:id", async (req, res) => {
     res.status(404).json({
       status: "fail",
       data: {
-        id: "Could not find a signature with that id identifier",
+        error: ("Could not find a signature with that id identifier"),
       },
     });
   }
